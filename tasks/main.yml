@@ -1,0 +1,20 @@
+---
+- name: Fail if parameters not found
+  fail:
+    msg: "Could not find pantheon_cron, or missing required parameters"
+  when:
+    - pantheon_cron | default({}) | length < 1
+    - pantheon_cron.sites | default([]) | length < 1
+    - pantheon_backup.tasks | default([]) | length < 1
+    
+- name: Run tasks
+  include_tasks: "task.yml"
+  loop: "{{ pantheon_cron.tasks }}"
+  loop_control:
+    extended: yes
+    label: "{{ _task.name | default(ansible_loop.index0) }}"
+    loop_var: _task
+  when:
+    - _task.disabled | default(false) != true
+  ignore_errors: "{{ pantheon_cron.stopOnFailure | default(false) | bool }}"
+
