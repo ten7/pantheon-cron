@@ -75,5 +75,4 @@
     - _command.arg is defined
     - _command.disabled | default(false) != true
 
-- include_tasks: "httpPing.yml"
 

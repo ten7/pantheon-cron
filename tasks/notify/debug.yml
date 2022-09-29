@@ -1,0 +1,9 @@
+---
+- debug: var=_notify
+  when:
+    - pantheon_cron.debug | default(false) == true
+    
+- name: Send notifier output to debug
+  debug:
+    msg: "{{ _notify.msg | default('No msg supplied.') }}"
+

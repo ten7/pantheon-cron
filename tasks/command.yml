@@ -1,4 +1,8 @@
 ---
+- debug: var=_command
+  when:
+    - pantheon_cron.debug | default(false) == true
+
 - name: Run command
   shell: >
     terminus {{ _command.command }}
@@ -13,9 +17,33 @@
     TERMINUS_SSH_COMMAND: "ssh -i {{ _site.keyFile }} -o PasswordAuthentication=no -o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostkeyAlgorithms=+ssh-rsa"
   ignore_errors: "{{ pantheon_cron.stopOnFailure | default(false) | bool == false }}"
 
+- debug: var=_pantheon_command_result
+  when:
+    - pantheon_cron.debug | default(false) == true
+
 - name: Print command output
   debug: 
     msg: "{{ _pantheon_command_result.stdout_lines }}"
   when:
     - _pantheon_command_result.stdout_lines is defined
+
+- name: Alert notifiers                                                 
+  include_tasks: 
+    file: "\
+      {% if _notifier.type == 'httpPing' %}\
+      notify/httpPing.yml\
+      {% elif _notifier.type == 'debug' %}\
+      notify/debug.yml\
+      {% endif %}"
+  loop: "{{ _command.notify }}"                                         
+  loop_control:
+    loop_var: _notify
+  vars:                                                                                    
+    _notifier: "{{ pantheon_cron.notifiers[_notify.notifier] }}"                          
+  when:                                                         
+    - _pantheon_command_result.rc == 0                           
+    - _command.notify | default([]) | length > 0                                                           
+    - _notify.disabled | default(false) == false                                 
+    - pantheon_cron.notifiers[_notify.notifier] is defined                               
+    - pantheon_cron.notifiers[_notify.notifier].type is defined
 

@@ -1,0 +1,13 @@
+---
+- debug: var=_notify
+  when:
+    - pantheon_cron.debug | default(false) == true
+
+- name: Send httpPing
+  uri:
+    url: "{{ _notifier.url }}"
+    force: yes
+    timeout: "10"
+    validate_certs: no
+  ignore_errors: yes
+

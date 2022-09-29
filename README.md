@@ -25,6 +25,7 @@ This role requires one dictionary as configuration, `pantheon_cron`:
       debug: true
       stopOnFailure: false
       sites: {}
+      notifiers: {}
       tasks: []
 ```
 
@@ -33,6 +34,7 @@ Where:
 * `debug` is `true` to enable debugging output. Optional, defaults to `false`.
 * `stopOnFailure` is `true` to stop the entire role if any one task fails. Optional, defaults to `false`.
 * `sites` is a dictionary of Pantheon sites. Required.
+* `notifiers` is a dictionary of notification services. Optional.
 * `tasks` is a list of tasks to perform. Required.
 
 ### Specifying sites
@@ -103,7 +105,79 @@ pantheon_cron:
 Where:
 * `command` is the `terminus` command to perform, typically `remote:drush` or `remote:wp`. Required.
 * `arg` is a string to pass to the Terminus command. Required
-* `disabled` is `true` to skip executing the commad. Optional, defaults to `false`.
+* `disabled` is `true` to skip executing the command. Optional, defaults to `false`.
+
+### Notifiers
+
+Often, you'll want to notify one or more services that a cron job was completed. You can define these services in the `pantheon_cron.notifiers` dictionary:
+
+```yaml
+    pantheon_cron:
+      terminusPath: "/usr/local/bin/terminus"
+      debug: true
+      stopOnFailure: false
+      sites: {}
+      notifiers:
+        my-http-ping:
+          type: "httpPing"
+          url: "ping.example.com/path-to-healthcheck-url"
+        send-to-output:
+          type: "debug"
+      tasks: []
+```
+
+Where:
+* `type` is the type of notifier such as `httpPing` and `debug`. Required.
+
+For `httpPing` type notifiers:
+* `url` is the URL to the HTTP healthcheck URL. 
+
+#### Using Notifiers
+
+To use notifiers, user the `notify` list in each of your `commands`:
+
+```yaml
+pantheon_cron:
+  sites:
+    example.com:
+      site_id: '12345678-abcd-ef01-2345-67890abcdef0'
+      machineTokenFile: "/path/to/pantheon-machine-token.txt"
+      keyFile: "/config/example-com/id_pantheon"
+      pubKeyFile: "/config/example-com/id_pantheon.pub"
+      retryCount: 3
+      retryDelay: 30
+    notifiers:
+      my-http-ping:
+        type: "httpPing"
+        url: "ping.example.com/path-to-healthcheck-url"
+      send-to-output:
+        type: "debug"
+tasks:
+  - name: "example.com cron and cr"
+    source: "example.com"
+    env: "live"
+    commands:
+      - command: "remote:drush"
+        arg: "cron"
+        disabled: false
+        notify:
+          - notifier: my-http-ping
+            disabled: false
+      - command: "remote:drush"
+        arg: "cr"
+        disabled: false
+        notify:
+          - notifier: "send-to-output"
+            msg: "A message"
+            disabled: false
+```
+
+Where:
+* `notifier` is the name of the notifier under `pantheon_cron.notifiers`. Required.
+* `disabled` is `true` to skip alerting the notifier. Optional, defaults to `false`.
+
+For `debug` type notifiers:
+* `msg` is an the message to display. Optional.
 
 ## Example Playbook
 
