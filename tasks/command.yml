@@ -1,0 +1,21 @@
+---
+- name: Run command
+  shell: >
+    terminus {{ _command.command }}
+    {{ _site.site_id }}.{{ _task.env }}
+    --
+    {{ _command.arg }}
+  register: _pantheon_command_result
+  until: _pantheon_command_result.rc == 0
+  retries: "{{ _site.retryCount | default(3) }}"
+  delay: "{{ _site.retryDelay | default(30) }}"
+  environment:
+    TERMINUS_SSH_COMMAND: "ssh -i {{ _site.keyFile }} -o PasswordAuthentication=no -o PubkeyAcceptedAlgorithms=+ssh-rsa -o HostkeyAlgorithms=+ssh-rsa"
+  ignore_errors: "{{ pantheon_cron.stopOnFailure | default(false) | bool == false }}"
+
+- name: Print command output
+  debug: 
+    msg: "{{ _pantheon_command_result.stdout_lines }}"
+  when:
+    - _pantheon_command_result.stdout_lines is defined
+
